@@ -1,0 +1,29 @@
+# .dockerignore
+# Prevents specified files and directories from being copied to the Docker image.
+
+# Git
+.git
+.gitignore
+
+# Docker
+.dockerignore
+Dockerfile
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+
+# Testing
+.pytest_cache/
+.coverage

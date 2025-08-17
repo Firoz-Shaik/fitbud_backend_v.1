@@ -1,0 +1,50 @@
+Summary of New & Updated Endpoints for Frontend Integration
+This update bridges the gap between the backend and frontend applications. All mock data related to the following features can now be replaced with live API calls.
+
+New Endpoints
+GET /api/v1/trainers/me/stats
+
+Purpose: Powers the "Active Clients" card on the trainer dashboard.
+
+Returns: {"active_clients": integer}
+
+Auth: Trainer only.
+
+GET /api/v1/clients/{client_id}/overview
+
+Purpose: Provides a rich data object for the client detail/dashboard view.
+
+Returns: A ClientOverview object with profile info and latest weight.
+
+Auth: Trainer for their own clients.
+
+GET /api/v1/clients/{client_id}/activity-feed
+
+Purpose: Populates the "Logs & Notes" or "Activity" tab for a client.
+
+Returns: A list of ActivityFeedItem objects, sorted by most recent.
+
+Auth: Trainer for their own clients.
+
+GET /api/v1/trainees/{trainee_id}/today
+
+Purpose: Critical endpoint. Powers the main "Today" screen for the trainee app.
+
+Returns: A TraineeToday object containing today's workout, diet compliance %, and current activity streak.
+
+Auth: Client for themselves, or Trainer for their own clients.
+
+PATCH /api/v1/clients/{client_id}/notes
+
+Purpose: Allows a trainer to save private notes on a client.
+
+Request Body: {"private_notes": "string"}
+
+Returns: The updated Client object.
+
+Auth: Trainer for their own clients.
+
+Key Adjustments
+Client Status: The status field on all client-related objects now strictly uses one of 'invited', 'active', or 'inactive'.
+
+Authorization: All endpoints are secured. Ensure the frontend sends the user's JWT Bearer token in the Authorization header for all requests. The API will return 401 Unauthorized or 403 Forbidden errors if the user is not logged in or does not have the correct role/permissions.
