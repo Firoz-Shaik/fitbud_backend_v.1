@@ -10,7 +10,7 @@ from app.services.activity_feed_service import activity_feed_service
 from app.api.deps import CurrentTrainer, DBSession
 from app.schemas.client import Client, ClientInvite
 from app.services.client_service import client_service
-from app.schemas.client import ClientUpdate
+from app.schemas.client import ClientUpdate,PaymentConfirmation
 from app.schemas.assigned_plan import ClientAssignedPlans
 
 router = APIRouter()
@@ -158,3 +158,33 @@ def get_client_assigned_plans(
 
     plans = client_service.get_assigned_plans_for_client(db=db, client_id=client_id)
     return plans
+
+@router.post("/{client_id}/confirm-payment", response_model=Client)
+def confirm_or_deny_payment(
+    client_id: uuid.UUID,
+    confirmation_in: PaymentConfirmation,
+    db: DBSession,
+    current_trainer: CurrentTrainer,
+):
+    """
+    Allows a trainer to confirm or deny a pending payment from a client.
+    """
+    client = client_service.get_client_by_id(db, client_id=client_id, trainer_id=current_trainer.id)
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+
+    if client.payment_status != 'pending':
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No payment is pending confirmation for this client.")
+
+    if confirmation_in.is_confirmed:
+        client.payment_status = "confirmed"
+        client.subscription_paid_status = True
+    else:
+        client.payment_status = "unpaid" # Or you could use a 'denied' status
+        client.subscription_paid_status = False
+
+    db.add(client)
+    db.commit()
+    db.refresh(client)
+    return client
+

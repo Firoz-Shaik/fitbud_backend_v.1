@@ -1,10 +1,12 @@
 # app/services/trainee_service.py
 import uuid
 from datetime import date, timedelta, timezone
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.plan import AssignedWorkoutPlan, AssignedDietPlan
 from app.models.log import WorkoutLog, DietLog
 from app.schemas.trainee import TraineePlans
+from app.models.client import Client
+from app.models.user import User
 
 class TraineeService:
     def get_trainee_dashboard(self, db: Session, *, client_id: uuid.UUID) -> dict:
@@ -59,18 +61,27 @@ class TraineeService:
             else:
                 break
 
-        client_record = db.query(Client).filter(Client.id == client_id).first()
+        client_record = db.query(Client).options(joinedload(Client.client_user)).filter(Client.id == client_id).first()
         is_fee_due = False
-        if client_record and client_record.subscription_due_date:
-            if date.today() > client_record.subscription_due_date.date() and not client_record.subscription_paid_status:
-                is_fee_due = True
+        payment_status = "unpaid" # Default value
+        subscription_due_date = None
+
+        if client_record:
+            payment_status = client_record.payment_status
+            subscription_due_date = client_record.subscription_due_date
+
+            if client_record.subscription_due_date:
+                if date.today() >= client_record.subscription_due_date.date() and not client_record.subscription_paid_status:
+                    is_fee_due = True
 
         return {
             "assigned_workout": todays_workout_details,
             "is_rest_day": is_rest_day,
             "diet_compliance_percent": round(diet_compliance_percent, 2),
             "current_streak_days": current_streak_days,
-            "is_fee_due": is_fee_due
+            "is_fee_due": is_fee_due,
+            "payment_status": payment_status,
+            "subscription_due_date": subscription_due_date
         }
     
         
@@ -92,5 +103,19 @@ class TraineeService:
             workout_plan=latest_workout_plan,
             diet_plan=latest_diet_plan
         )
+    def mark_payment_as_pending(self, db: Session, *, current_user: User) -> Client:
+        """
+        Finds the client profile for the current user and sets their
+        payment status to 'pending'.
+        """
+        if not current_user.client_profile:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client profile not found for this user.")
+        
+        client = current_user.client_profile
+        client.payment_status = "pending"
+        db.add(client)
+        db.commit()
+        db.refresh(client)
+        return client
 
 trainee_service = TraineeService()

@@ -22,8 +22,12 @@ class User(Base):
 
     # Relationships
     trainer_clients = relationship("Client", foreign_keys="Client.trainer_user_id", back_populates="trainer_user")
-    client_profile = relationship("Client", foreign_keys="Client.client_user_id", back_populates="client_user", uselist=False)
-    
+    client_profile = relationship(
+        "Client", 
+        foreign_keys="Client.client_user_id", # <-- 2. SPECIFY THE EXACT FOREIGN KEY
+        back_populates="client_user", 
+        uselist=False
+    )
     __table_args__ = (
         # This corresponds to the partial unique index in the SQL file.
         Index("users_email_unique_when_active_idx", "email", unique=True, postgresql_where=(deleted_at.is_(None))),

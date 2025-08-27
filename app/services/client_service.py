@@ -113,6 +113,7 @@ class ClientService:
             "health_notes": client.health_notes,
             "subscription_due_date": client.subscription_due_date,
             "subscription_paid_status": client.subscription_paid_status,
+            "payment_status": client.payment_status,
             "goal_weight_kg": None # Placeholder for V2
         }
 

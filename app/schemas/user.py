@@ -1,6 +1,6 @@
 # fitbud_v1/app/schemas/user.py
 
-from pydantic import BaseModel, EmailStr, constr
+from pydantic import BaseModel, EmailStr, constr, computed_field
 import uuid
 from datetime import datetime
 from .core import CamelCaseModel
@@ -22,6 +22,12 @@ class User(UserBase):
     user_role: str
     profile_photo_url: str | None = None
     created_at: datetime
+    @computed_field
+    @property
+    def client_profile_id(self) -> uuid.UUID | None:
+        if hasattr(self, 'client_profile') and self.client_profile:
+            return self.client_profile.id
+        return None
 
     class Config:
         # This allows Pydantic to create the model from an ORM object

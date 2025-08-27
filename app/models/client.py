@@ -24,6 +24,7 @@ class Client(Base):
     # --- NEW V1.1 COLUMNS ---
     subscription_due_date = Column(DateTime(timezone=True), nullable=True)
     subscription_paid_status = Column(Boolean, nullable=True, default=False)
+    payment_status = Column(String, nullable=True, default='unpaid') # Can be 'unpaid', 'pending', 'confirmed'
     initial_weight_kg = Column(Numeric(6, 2), nullable=True)
     height_cm = Column(Numeric(5, 1), nullable=True)
     health_notes = Column(Text, nullable=True)
@@ -33,8 +34,8 @@ class Client(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
-    trainer_user = relationship("User", foreign_keys=[trainer_user_id], back_populates="trainer_clients")
-    client_user = relationship("User", foreign_keys=[client_user_id], back_populates="client_profile")
+    trainer_user = relationship("User", foreign_keys= "Client.trainer_user_id", back_populates="trainer_clients")
+    client_user = relationship("User", foreign_keys="Client.client_user_id", back_populates="client_profile")
     
     assigned_workout_plans = relationship("AssignedWorkoutPlan", back_populates="client", cascade="all, delete-orphan")
     assigned_diet_plans = relationship("AssignedDietPlan", back_populates="client", cascade="all, delete-orphan")

@@ -1,5 +1,5 @@
 # app/services/user_service.py
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
@@ -9,8 +9,12 @@ from app.schemas.user import UserCreate, UserPasswordUpdate, UserEmailUpdate, Us
 class UserService:
     # --- THIS METHOD WAS MISSING ---
     def get_user_by_email(self, db: Session, *, email: str) -> User | None:
-        return db.query(User).filter(User.email == email, User.deleted_at.is_(None)).first()
-
+        return (
+        db.query(User)
+        .options(joinedload(User.client_profile)) # <-- Add this line
+        .filter(User.email == email, User.deleted_at.is_(None))
+        .first()
+    )
     def create_user(self, db: Session, *, obj_in: UserCreate) -> User:
         hashed_password = get_password_hash(obj_in.password)
         db_obj = User(

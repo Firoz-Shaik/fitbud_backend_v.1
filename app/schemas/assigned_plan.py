@@ -7,6 +7,18 @@ from pydantic import BaseModel
 from datetime import datetime
 from .core import CamelCaseModel
 from pydantic import computed_field
+from .template import WorkoutPlanStructure, DietPlanStructure
+
+# ---- Define Structure of plan_details -------
+
+class WorkoutPlanDetails(CamelCaseModel):
+    name: str
+    plan_structure: WorkoutPlanStructure
+
+class DietPlanDetails(CamelCaseModel):
+    name: str
+    plan_structure: DietPlanStructure
+
 # --- Plan Assignment Schemas ---
 
 class PlanAssignmentBase(CamelCaseModel):
@@ -31,17 +43,29 @@ class AssignedPlan(CamelCaseModel):
     @property
     def name(self) -> str:
         # Simply get the name from the planDetails dictionary
-        return self.plan_details.get("name", "Custom Plan")
+        if hasattr(self.plan_details, 'name'):
+            return self.plan_details.name
+        return "Custom Plan"
     
     class Config:
         from_attributes = True
 
 class AssignedWorkoutPlan(AssignedPlan):
-    pass
+    plan_details: WorkoutPlanDetails
 
 class AssignedDietPlan(AssignedPlan):
-    pass
+    plan_details: DietPlanDetails
     
 class ClientAssignedPlans(CamelCaseModel):
     latest_workout_plan: Optional[AssignedWorkoutPlan] = None
     latest_diet_plan: Optional[AssignedDietPlan] = None
+
+    @computed_field
+    @property
+    def latestWorkoutPlan(self) -> Optional[AssignedWorkoutPlan]:
+        return self.latest_workout_plan
+
+    @computed_field
+    @property
+    def latestDietPlan(self) -> Optional[AssignedDietPlan]:
+        return self.latest_diet_plan

@@ -2,7 +2,7 @@
 # Pydantic models for client data.
 
 import uuid
-from datetime import datetime
+from datetime import datetime,date
 from pydantic import BaseModel, EmailStr, constr, computed_field
 from typing import Optional
 from decimal import Decimal
@@ -10,6 +10,9 @@ from .user import User # Import User schema for nesting
 from .core import CamelCaseModel
 
 # Properties required when a trainer invites a new client.
+class PaymentConfirmation(CamelCaseModel):
+    is_confirmed: bool
+    
 class ClientInvite(CamelCaseModel):
     email: EmailStr
     full_name: constr(min_length=1)
@@ -54,7 +57,22 @@ class Client(ClientBase):
     invited_full_name: Optional[str] = None
     invited_email: Optional[EmailStr] = None
     invite_code: Optional[str] = None
+    subscription_due_date: Optional[datetime] = None
+    subscription_paid_status: Optional[bool] = None
+    payment_status: Optional[str] = None
 
+
+
+    @computed_field
+    @property
+    def is_fee_due(self) -> bool:
+        """
+        Returns True if the subscription is past its due date and not paid.
+        """
+        if self.subscription_due_date and self.subscription_paid_status is False:
+            if date.today() >= self.subscription_due_date.date():
+                return True
+        return False
     # --- Computed fields for frontend compatibility ---
     @computed_field
     @property
@@ -105,5 +123,17 @@ class ClientOverview(CamelCaseModel):
     health_notes: Optional[str] = None
     subscription_due_date: Optional[datetime] = None
     subscription_paid_status: Optional[bool] = None
+    payment_status: Optional[str] = None
+
+    @computed_field
+    @property
+    def is_fee_due(self) -> bool:
+        """
+        Returns True if the subscription is past its due date and not paid.
+        """
+        if self.subscription_due_date and self.subscription_paid_status is False:
+            if date.today() >= self.subscription_due_date.date():
+                return True
+        return False    
     # In V2, goal_weight could be a dedicated DB field
     goal_weight_kg: Optional[float] = None 
