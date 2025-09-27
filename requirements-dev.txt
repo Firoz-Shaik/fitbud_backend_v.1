@@ -1,4 +1,0 @@
-pytest
-httpx
-black
-isort
