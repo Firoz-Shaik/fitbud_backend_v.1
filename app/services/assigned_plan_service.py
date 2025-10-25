@@ -1,47 +1,38 @@
 # app/services/assigned_plan_service.py
-# Business logic for assigning workout and diet plans to clients.
+# V2 Business logic for assigning plans, using the new normalized structure.
 
 import uuid
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-
 from app.models.client import Client
 from app.models.template import WorkoutPlanTemplate, DietPlanTemplate
 from app.models.plan import AssignedWorkoutPlan, AssignedDietPlan
 from app.schemas.assigned_plan import WorkoutPlanAssign, DietPlanAssign
+from app.services.template_service import template_service # Import the template service
 
 class AssignedPlanService:
     def assign_workout_plan(self, db: Session, *, assignment_in: WorkoutPlanAssign, trainer_id: uuid.UUID) -> AssignedWorkoutPlan:
         """
-        Assigns a workout plan to a client, creating an immutable snapshot.
+        Assigns a workout plan to a client by building a complete JSON snapshot
+        from the new normalized V2 template structure.
         """
-        # 1. Validate that the client belongs to the trainer
-        client = db.query(Client).filter(
-            Client.id == assignment_in.client_id,
-            Client.trainer_user_id == trainer_id,
-            Client.deleted_at.is_(None)
-        ).first()
+        # 1. Validate that the client and template exist and belong to the trainer
+        client = db.query(Client).filter(Client.id == assignment_in.client_id, Client.trainer_user_id == trainer_id).first()
         if not client:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found or does not belong to this trainer.")
+            raise HTTPException(status_code=404, detail="Client not found.")
 
-        # 2. Validate that the template belongs to the trainer
-        template = db.query(WorkoutPlanTemplate).filter(
-            WorkoutPlanTemplate.id == assignment_in.source_template_id,
-            WorkoutPlanTemplate.trainer_id == trainer_id,
-            WorkoutPlanTemplate.deleted_at.is_(None)
-        ).first()
+        template = template_service.get_workout_template(db, template_id=assignment_in.source_template_id, trainer_id=trainer_id)
         if not template:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workout plan template not found or does not belong to this trainer.")
-        plan_snapshot = {
-            "name": template.name,
-            "plan_structure": template.plan_structure
-        }
+            raise HTTPException(status_code=404, detail="Workout plan template not found.")
 
-        # 3. Create the immutable snapshot
+        # 2. Build the rich JSON snapshot from the template's relational items
+        plan_snapshot = plan_snapshot = template_service.create_workout_plan_snapshot(template=template)
+
+        # 3. Create the immutable assigned plan record
         db_obj = AssignedWorkoutPlan(
             client_id=assignment_in.client_id,
             source_template_id=assignment_in.source_template_id,
-            plan_details=plan_snapshot, # This is the critical snapshot step
+            plan_details=plan_snapshot,
         )
         
         db.add(db_obj)
@@ -51,31 +42,19 @@ class AssignedPlanService:
 
     def assign_diet_plan(self, db: Session, *, assignment_in: DietPlanAssign, trainer_id: uuid.UUID) -> AssignedDietPlan:
         """
-        Assigns a diet plan to a client, creating an immutable snapshot.
+        Assigns a diet plan by building a JSON snapshot from the V2 structure.
         """
-        # 1. Validate client
-        client = db.query(Client).filter(
-            Client.id == assignment_in.client_id,
-            Client.trainer_user_id == trainer_id,
-            Client.deleted_at.is_(None)
-        ).first()
+        client = db.query(Client).filter(Client.id == assignment_in.client_id, Client.trainer_user_id == trainer_id).first()
         if not client:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found or does not belong to this trainer.")
-        
-        # 2. Validate template
-        template = db.query(DietPlanTemplate).filter(
-            DietPlanTemplate.id == assignment_in.source_template_id,
-            DietPlanTemplate.trainer_id == trainer_id,
-            DietPlanTemplate.deleted_at.is_(None)
-        ).first()
+            raise HTTPException(status_code=404, detail="Client not found.")
+
+        template = template_service.get_diet_template(db, template_id=assignment_in.source_template_id, trainer_id=trainer_id)
         if not template:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Diet plan template not found or does not belong to this trainer.")
-        
-        plan_snapshot = {
-            "name": template.name,
-            "plan_structure": template.plan_structure
-        }
-        # 3. Create snapshot
+            raise HTTPException(status_code=404, detail="Diet plan template not found.")
+
+        # Build the snapshot from the new structure
+        plan_snapshot = plan_snapshot = template_service.create_diet_plan_snapshot(template=template)
+
         db_obj = AssignedDietPlan(
             client_id=assignment_in.client_id,
             source_template_id=assignment_in.source_template_id,

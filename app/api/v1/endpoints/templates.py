@@ -3,7 +3,7 @@
 
 import uuid
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, Response # Response ADDED
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Query
 
 from app.api.deps import CurrentTrainer, DBSession
 from app.schemas.template import (
@@ -35,8 +35,8 @@ def create_workout_template(
 def list_workout_templates(
     db: DBSession,
     current_trainer: CurrentTrainer,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
 ):
     """
     Retrieve workout plan templates for the current trainer.
@@ -114,8 +114,8 @@ def create_diet_template(
 def list_diet_templates(
     db: DBSession,
     current_trainer: CurrentTrainer,
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
 ):
     """
     Retrieve diet plan templates for the current trainer.

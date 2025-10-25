@@ -1,7 +1,8 @@
 # app/services/trainee_service.py
 import uuid
-from datetime import date, timedelta, timezone
+from datetime import date, timedelta
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import union_all, select, literal_column
 from app.models.plan import AssignedWorkoutPlan, AssignedDietPlan
 from app.models.log import WorkoutLog, DietLog
 from app.schemas.trainee import TraineePlans
@@ -48,19 +49,25 @@ class TraineeService:
                 ).count()
                 diet_compliance_percent = (logged_meals_today / total_meals_planned) * 100
 
-        # 3. Calculate streak (simplified)
+        # --- 3. OPTIMIZED Streak Calculation ---
+        # Fetch all unique log dates for the client in a single query.
+        workout_log_dates = select(WorkoutLog.logged_at.cast(date)).filter(WorkoutLog.client_id == client_id)
+        diet_log_dates = select(DietLog.logged_at.cast(date)).filter(DietLog.client_id == client_id)
+        
+        all_log_dates_query = union_all(workout_log_dates, diet_log_dates).alias("all_logs")
+        unique_log_dates_stmt = select(all_log_dates_query.c.logged_at).distinct()
+        
+        result = db.execute(unique_log_dates_stmt).fetchall()
+        unique_log_dates = {row[0] for row in result}
+
+        # Calculate the streak in-memory (much faster).
         current_streak_days = 0
-        for i in range(365): # Check up to a year back
+        for i in range(365 * 5): # Check up to 5 years back
             check_date = today - timedelta(days=i)
-            has_log = db.query(WorkoutLog).filter(WorkoutLog.client_id == client_id, WorkoutLog.logged_at >= check_date, WorkoutLog.logged_at < check_date + timedelta(days=1)).first()
-            if not has_log:
-                has_log = db.query(DietLog).filter(DietLog.client_id == client_id, DietLog.logged_at >= check_date, DietLog.logged_at < check_date + timedelta(days=1)).first()
-            
-            if has_log:
+            if check_date in unique_log_dates:
                 current_streak_days += 1
             else:
                 break
-
         client_record = db.query(Client).options(joinedload(Client.client_user)).filter(Client.id == client_id).first()
         is_fee_due = False
         payment_status = "unpaid" # Default value

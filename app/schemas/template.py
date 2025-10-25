@@ -1,87 +1,98 @@
 # app/schemas/template.py
-# Pydantic models for plan templates.
+# Pydantic models for plan templates, updated for the new V2 normalized structure.
 
 import uuid
-from typing import List, Optional, Any
+from typing import List, Optional
 from pydantic import BaseModel, constr
 from datetime import datetime
 from .core import CamelCaseModel
+from .library import LibraryExercise, LibraryFoodItem
 
-# --- Workout Template Schemas ---
+# --- Refined objects for the new WORKOUT API structure ---
 
-class WorkoutSet(CamelCaseModel):
-    reps: str  # e.g., "8-12"
-    weight: Optional[str] = None # e.g., "50kg" or "Bodyweight"
-    rest_seconds: int = 60
-
-class WorkoutItem(CamelCaseModel):
-    exercise_name: str # In V2, this could be a UUID from exercise_library
+class WorkoutTarget(CamelCaseModel):
+    sets: str
+    reps: str
+    rest_period_seconds: Optional[int] = None
     notes: Optional[str] = None
-    sets: List[WorkoutSet]
 
-class WorkoutDay(CamelCaseModel):
-    day_name: str # e.g., "Day 1: Upper Body"
-    items: List[WorkoutItem]
-
-class WorkoutPlanStructure(CamelCaseModel):
-    days: List[WorkoutDay]
-
-class WorkoutPlanTemplateBase(CamelCaseModel):
-    name: constr(min_length=1)
-    description: Optional[str] = None
-    plan_structure: WorkoutPlanStructure
-
-class WorkoutPlanTemplateCreate(WorkoutPlanTemplateBase):
-    pass
-
-class WorkoutPlanTemplateUpdate(CamelCaseModel):
-    name: Optional[constr(min_length=1)] = None
-    description: Optional[str] = None
-    plan_structure: Optional[WorkoutPlanStructure] = None
-
-class WorkoutPlanTemplate(WorkoutPlanTemplateBase):
-    id: uuid.UUID
-    trainer_id: uuid.UUID
-    created_at: datetime
+class WorkoutTemplateItemGet(CamelCaseModel):
+    item_id: int
+    day_name: str
+    display_order: Optional[int] = None
+    exercise: LibraryExercise
+    targets: WorkoutTarget
 
     class Config:
         from_attributes = True
 
-# --- Diet Template Schemas ---
+class WorkoutTemplateItemCreate(CamelCaseModel):
+    exercise_id: uuid.UUID
+    day_name: str
+    display_order: Optional[int] = None
+    targets: WorkoutTarget
 
-class FoodItem(CamelCaseModel):
-    name: str
-    quantity: str # e.g., "100g" or "1 cup"
-    calories: Optional[int] = None
-    protein_g: Optional[float] = None
-    carbs_g: Optional[float] = None
-    fat_g: Optional[float] = None
+# --- Refined objects for the new DIET API structure ---
 
-class DietMeal(CamelCaseModel):
-    meal_name: str # e.g., "Breakfast"
-    items: List[FoodItem]
+class Serving(CamelCaseModel):
+    size: float
+    unit: str
 
-class DietPlanStructure(CamelCaseModel):
-    meals: List[DietMeal]
+class CalculatedNutrition(CamelCaseModel):
+    calories: float
+    protein_g: float
+    carbs_g: float
+    fat_g: float
 
-class DietPlanTemplateBase(CamelCaseModel):
-    name: constr(min_length=1)
-    description: Optional[str] = None
-    plan_structure: DietPlanStructure
-
-class DietPlanTemplateCreate(DietPlanTemplateBase):
-    pass
-
-class DietPlanTemplateUpdate(CamelCaseModel):
-    name: Optional[constr(min_length=1)] = None
-    description: Optional[str] = None
-    plan_structure: Optional[DietPlanStructure] = None
-
-class DietPlanTemplate(DietPlanTemplateBase):
-    id: uuid.UUID
-    trainer_id: uuid.UUID
-    created_at: datetime
+class DietTemplateItemGet(CamelCaseModel):
+    item_id: int
+    meal_name: str
+    display_order: Optional[int] = None
+    food_item: LibraryFoodItem
+    serving: Serving
+    calculated_nutrition: CalculatedNutrition
 
     class Config:
         from_attributes = True
 
+class DietTemplateItemCreate(CamelCaseModel):
+    food_item_id: uuid.UUID
+    meal_name: str
+    display_order: Optional[int] = None
+    serving: Serving
+
+# --- Main Template Schemas ---
+
+class PlanTemplateBase(CamelCaseModel):
+    name: constr(min_length=1)
+    description: Optional[str] = None
+
+class WorkoutPlanTemplateCreate(PlanTemplateBase):
+    items: List[WorkoutTemplateItemCreate]
+
+class WorkoutPlanTemplateUpdate(PlanTemplateBase):
+    items: List[WorkoutTemplateItemCreate]
+
+class WorkoutPlanTemplate(PlanTemplateBase):
+    id: uuid.UUID
+    trainer_id: uuid.UUID
+    created_at: datetime
+    items: List[WorkoutTemplateItemGet]
+
+    class Config:
+        from_attributes = True
+
+class DietPlanTemplateCreate(PlanTemplateBase):
+    items: List[DietTemplateItemCreate]
+
+class DietPlanTemplateUpdate(PlanTemplateBase):
+    items: List[DietTemplateItemCreate]
+
+class DietPlanTemplate(PlanTemplateBase):
+    id: uuid.UUID
+    trainer_id: uuid.UUID
+    created_at: datetime
+    items: List[DietTemplateItemGet]
+
+    class Config:
+        from_attributes = True

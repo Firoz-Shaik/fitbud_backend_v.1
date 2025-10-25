@@ -3,24 +3,12 @@
 
 import uuid
 from typing import Any, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 from datetime import datetime
 from .core import CamelCaseModel
-from pydantic import computed_field
-from .template import WorkoutPlanStructure, DietPlanStructure
-
-# ---- Define Structure of plan_details -------
-
-class WorkoutPlanDetails(CamelCaseModel):
-    name: str
-    plan_structure: WorkoutPlanStructure
-
-class DietPlanDetails(CamelCaseModel):
-    name: str
-    plan_structure: DietPlanStructure
+# No longer imports from .template, fixing the ImportError
 
 # --- Plan Assignment Schemas ---
-
 class PlanAssignmentBase(CamelCaseModel):
     client_id: uuid.UUID
     source_template_id: uuid.UUID
@@ -32,29 +20,28 @@ class DietPlanAssign(PlanAssignmentBase):
     pass
 
 # --- Assigned Plan Response Schemas ---
-
 class AssignedPlan(CamelCaseModel):
     id: uuid.UUID
     client_id: uuid.UUID
     source_template_id: uuid.UUID
-    plan_details: Any # The JSONB snapshot
+    plan_details: Any # The JSONB snapshot created by the service
     assigned_at: datetime
+    
     @computed_field
     @property
     def name(self) -> str:
-        # Simply get the name from the planDetails dictionary
-        if hasattr(self.plan_details, 'name'):
-            return self.plan_details.name
+        if isinstance(self.plan_details, dict) and "name" in self.plan_details:
+            return self.plan_details["name"]
         return "Custom Plan"
     
     class Config:
         from_attributes = True
 
 class AssignedWorkoutPlan(AssignedPlan):
-    plan_details: WorkoutPlanDetails
+    pass
 
 class AssignedDietPlan(AssignedPlan):
-    plan_details: DietPlanDetails
+    pass
     
 class ClientAssignedPlans(CamelCaseModel):
     latest_workout_plan: Optional[AssignedWorkoutPlan] = None

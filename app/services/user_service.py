@@ -11,7 +11,7 @@ class UserService:
     def get_user_by_email(self, db: Session, *, email: str) -> User | None:
         return (
         db.query(User)
-        .options(joinedload(User.client_profile)) # <-- Add this line
+        .options(joinedload(User.client_profile))
         .filter(User.email == email, User.deleted_at.is_(None))
         .first()
     )
