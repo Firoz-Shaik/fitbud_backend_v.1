@@ -24,7 +24,7 @@ class User(Base):
     trainer_clients = relationship("Client", foreign_keys="Client.trainer_user_id", back_populates="trainer_user")
     client_profile = relationship(
         "Client", 
-        foreign_keys="Client.client_user_id", # <-- 2. SPECIFY THE EXACT FOREIGN KEY
+        foreign_keys="Client.client_user_id",
         back_populates="client_user", 
         uselist=False
     )

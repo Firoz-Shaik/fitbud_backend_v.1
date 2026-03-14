@@ -2,20 +2,40 @@
 # Business logic for creating and retrieving weekly check-ins.
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-
+from app.api.deps import CurrentClient, CurrentUser
+from app.domain.client_guards import assert_client_allows_action
+from app.domain.authorization.client_access import get_client_for_viewer
+from app.models.client import Client
 from app.models.log import Checkin
 from app.models.activity import ActivityFeed
 from app.schemas.checkin import CheckinCreate
 
 class CheckinService:
-    def create_checkin(self, db: Session, *, obj_in: CheckinCreate, client_id: uuid.UUID) -> Checkin:
+    def create_checkin(self, db: Session, *, obj_in: CheckinCreate, current_client: CurrentClient) -> Checkin:
         """
         Creates a weekly check-in and a corresponding activity feed entry in a single transaction.
         """
+        # 1. Validate that the client exists and is active
+        if not current_client.client_profile:
+         raise HTTPException(
+             status_code=status.HTTP_400_BAD_REQUEST, 
+             detail="Client profile not found for this user."
+        )
+        client_id = current_client.client_profile.id
+        client = db.query(Client).filter(
+            Client.id == client_id,
+            Client.deleted_at.is_(None)
+        ).first()
+        if not client:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+        
+        # 2. Validate that the client is allowed to check in
+        assert_client_allows_action(client, "checkin")
+
         try:
             # 1. Create the check-in entry
             checkin_entry = Checkin(
@@ -32,7 +52,7 @@ class CheckinService:
             activity_entry = ActivityFeed(
                 client_id=client_id,
                 event_type='CHECKIN_SUBMITTED',
-                event_timestamp=datetime.utcnow(),
+                event_timestamp=datetime.now(timezone.utc),
                 event_metadata=activity_metadata
             )
             db.add(activity_entry)
@@ -53,6 +73,7 @@ class CheckinService:
         db: Session, 
         *, 
         client_id: uuid.UUID, 
+        current_user: CurrentUser,
         start_date: Optional[datetime], 
         end_date: Optional[datetime], 
         skip: int, 
@@ -61,6 +82,9 @@ class CheckinService:
         """
         Retrieves a list of check-ins for a specific client, with optional date filtering.
         """
+        client = get_client_for_viewer(db, client_id=client_id, current_user=current_user)
+        assert_client_allows_action(client, "view_checkins")
+
         query = db.query(Checkin).filter(Checkin.client_id == client_id)
         
         if start_date:

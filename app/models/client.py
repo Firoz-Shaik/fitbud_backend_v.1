@@ -13,7 +13,7 @@ class Client(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     trainer_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     client_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, unique=True)
-    status = Column(String, nullable=False) # 'invited', 'active', 'inactive'
+    client_status = Column(String, nullable=False, server_default="invited", index=True) # 'invited', 'active', 'inactive'
     goal = Column(String, nullable=True)
     goal_description = Column(Text, nullable=True)
     invited_full_name = Column(String, nullable=True)

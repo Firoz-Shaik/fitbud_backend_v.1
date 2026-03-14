@@ -2,7 +2,7 @@
 # SQLAlchemy ORM models for plan templates, updated for V2 structure.
 
 import uuid
-from sqlalchemy import Column, String, DateTime, func, ForeignKey, Integer, BigInteger, Text, Boolean, Numeric
+from sqlalchemy import Column, String, DateTime, func, ForeignKey, Integer, BigInteger, Text, Boolean, Numeric, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -11,8 +11,13 @@ from app.core.database import Base
 
 class ExerciseLibrary(Base):
     __tablename__ = "exercise_library"
+
+    __table_args__ = (
+        UniqueConstraint("name", "owner_trainer_id", name="uq_exercise_trainer"),
+    )
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String, nullable=False, unique=True)
+    name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     owner_trainer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     is_verified = Column(Boolean, nullable=False, default=False)
@@ -22,8 +27,13 @@ class ExerciseLibrary(Base):
 
 class FoodItemLibrary(Base):
     __tablename__ = "food_item_library"
+
+    __table_args__ = (
+        UniqueConstraint("name", "owner_trainer_id", name="uq_food_trainer"),
+    )
+
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String, nullable=False, unique=True)
+    name = Column(String, nullable=False)
     owner_trainer_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     is_verified = Column(Boolean, nullable=False, default=False)
     base_unit_type = Column(String, nullable=True) # MASS or VOLUME

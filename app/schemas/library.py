@@ -3,7 +3,7 @@
 
 import uuid
 from typing import Optional
-from pydantic import BaseModel, constr
+from pydantic import BaseModel, ConfigDict, constr
 from .core import CamelCaseModel
 
 # --- Exercise Library Schemas ---
@@ -23,15 +23,13 @@ class LibraryExercise(LibraryExerciseBase):
     is_verified: bool
     owner_trainer_id: Optional[uuid.UUID] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Food Item Library Schemas ---
 
 class LibraryFoodItemBase(CamelCaseModel):
     name: constr(min_length=1)
-    category: Optional[str] = None
-    base_unit_type: Optional[str] = None # MASS or VOLUME
+    base_unit_type: Optional[str] = None  # MASS or VOLUME
     grams_per_ml: Optional[float] = None
     calories_per_100g: Optional[int] = None
     protein_per_100g: Optional[float] = None
@@ -49,5 +47,4 @@ class LibraryFoodItem(LibraryFoodItemBase):
     is_verified: bool
     owner_trainer_id: Optional[uuid.UUID] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

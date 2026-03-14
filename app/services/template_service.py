@@ -19,35 +19,18 @@ from app.schemas.template import (
     DietPlanTemplateCreate,
     DietPlanTemplateUpdate
 )
-from app.core.units import UNIT_DICTIONARY
+from app.core.units import UNIT_DICTIONARY, calculate_nutrition
 
 class TemplateService:
     
     def _calculate_nutrition(self, food_item: FoodItemLibrary, serving_size: float, serving_unit: str) -> dict:
-        """
-        Calculates nutrition for a given food item and serving size.
-        """
-        unit_info = UNIT_DICTIONARY.get(serving_unit.lower())
+        """Calculates nutrition for a given food item and serving size. Raises HTTPException for invalid units."""
+        unit_info = UNIT_DICTIONARY.get((serving_unit or "").lower())
         if not unit_info:
             raise HTTPException(status_code=400, detail=f"Unit '{serving_unit}' is not a valid unit.")
-
-        total_grams = 0
-        if unit_info["type"] == "MASS":
-            total_grams = serving_size * unit_info["to_base_grams"]
-        elif unit_info["type"] == "VOLUME":
-            if food_item.base_unit_type != "VOLUME" or not food_item.grams_per_ml:
-                raise HTTPException(status_code=400, detail=f"Cannot perform volume to mass conversion for '{food_item.name}'.")
-            total_ml = serving_size * unit_info["to_base_ml"]
-            total_grams = total_ml * float(food_item.grams_per_ml)
-        
-        multiplier = total_grams / 100.0
-        
-        return {
-            "calories": (food_item.calories_per_100g or 0) * multiplier,
-            "protein_g": float(food_item.protein_per_100g or 0) * multiplier,
-            "carbs_g": float(food_item.carbs_per_100g or 0) * multiplier,
-            "fat_g": float(food_item.fat_per_100g or 0) * multiplier,
-        }
+        if unit_info["type"] == "VOLUME" and (food_item.base_unit_type != "VOLUME" or not food_item.grams_per_ml):
+            raise HTTPException(status_code=400, detail=f"Cannot perform volume to mass conversion for '{food_item.name}'.")
+        return calculate_nutrition(food_item, serving_size, serving_unit)
 
     # --- Workout Plan Template Methods ---
     def create_workout_template(self, db: Session, *, obj_in: WorkoutPlanTemplateCreate, trainer_id: uuid.UUID) -> WorkoutPlanTemplate:
@@ -55,7 +38,16 @@ class TemplateService:
         db.add(db_template)
         db.flush()
         for item_in in obj_in.items:
-            db.add(WorkoutTemplateItem(template_id=db_template.id, **item_in.model_dump()))
+            dump = item_in.model_dump(exclude={"targets", "target_sets", "target_reps", "rest_period_seconds", "notes"})
+            sets_val = (item_in.targets.sets if item_in.targets else item_in.target_sets) or ""
+            reps_val = (item_in.targets.reps if item_in.targets else item_in.target_reps) or ""
+            dump["target_sets"] = sets_val
+            dump["target_reps"] = reps_val
+            dump["rest_period_seconds"] = (
+                item_in.targets.rest_period_seconds if item_in.targets else item_in.rest_period_seconds
+            )
+            dump["notes"] = item_in.targets.notes if item_in.targets else item_in.notes
+            db.add(WorkoutTemplateItem(template_id=db_template.id, **dump))
         db.commit()
         db.refresh(db_template)
         return db_template
@@ -75,7 +67,16 @@ class TemplateService:
         template.description = obj_in.description
         db.query(WorkoutTemplateItem).filter(WorkoutTemplateItem.template_id == template.id).delete()
         for item_in in obj_in.items:
-            db.add(WorkoutTemplateItem(template_id=template.id, **item_in.model_dump()))
+            dump = item_in.model_dump(exclude={"targets", "target_sets", "target_reps", "rest_period_seconds", "notes"})
+            sets_val = (item_in.targets.sets if item_in.targets else item_in.target_sets) or ""
+            reps_val = (item_in.targets.reps if item_in.targets else item_in.target_reps) or ""
+            dump["target_sets"] = sets_val
+            dump["target_reps"] = reps_val
+            dump["rest_period_seconds"] = (
+                item_in.targets.rest_period_seconds if item_in.targets else item_in.rest_period_seconds
+            )
+            dump["notes"] = item_in.targets.notes if item_in.targets else item_in.notes
+            db.add(WorkoutTemplateItem(template_id=template.id, **dump))
         db.commit()
         db.refresh(template)
         return template
@@ -95,9 +96,14 @@ class TemplateService:
             if not food_item:
                 raise HTTPException(status_code=404, detail=f"Food item with id {item_in.food_item_id} not found.")
             
-            calculated_nutrition = self._calculate_nutrition(food_item, item_in.serving.size, item_in.serving.unit)
-            
-            db.add(DietTemplateItem(template_id=db_template.id, food_item_id=item_in.food_item_id, meal_name=item_in.meal_name, display_order=item_in.display_order, serving=item_in.serving.model_dump(), calculated_nutrition=calculated_nutrition))
+            db.add(DietTemplateItem(
+                template_id=db_template.id,
+                food_item_id=item_in.food_item_id,
+                meal_name=item_in.meal_name,
+                display_order=item_in.display_order,
+                serving_size=item_in.serving.size,
+                serving_unit=item_in.serving.unit,
+            ))
         
         db.commit()
         db.refresh(db_template)
@@ -122,9 +128,14 @@ class TemplateService:
             if not food_item:
                 raise HTTPException(status_code=404, detail=f"Food item with id {item_in.food_item_id} not found.")
             
-            calculated_nutrition = self._calculate_nutrition(food_item, item_in.serving.size, item_in.serving.unit)
-
-            db.add(DietTemplateItem(template_id=template.id, food_item_id=item_in.food_item_id, meal_name=item_in.meal_name, display_order=item_in.display_order, serving=item_in.serving.model_dump(), calculated_nutrition=calculated_nutrition))
+            db.add(DietTemplateItem(
+                template_id=template.id,
+                food_item_id=item_in.food_item_id,
+                meal_name=item_in.meal_name,
+                display_order=item_in.display_order,
+                serving_size=item_in.serving.size,
+                serving_unit=item_in.serving.unit,
+            ))
             
         db.commit()
         db.refresh(template)
@@ -146,7 +157,8 @@ class TemplateService:
                     "dayName": item.day_name,
                     "displayOrder": item.display_order,
                     "exercise": {
-                        "id": item.exercise.id,
+                        # JSONB must not contain UUID objects (psycopg2 can't serialize them)
+                        "id": str(item.exercise.id),
                         "name": item.exercise.name,
                         "description": item.exercise.description
                     },
@@ -171,19 +183,19 @@ class TemplateService:
                     "mealName": item.meal_name,
                     "displayOrder": item.display_order,
                     "foodItem": {
-                        "id": item.food_item.id,
-                        "name": item.food_item.name,
-                        "category": item.food_item.category
+                        # JSONB must not contain UUID objects (psycopg2 can't serialize them)
+                        "id": str(item.food_item.id),
+                        "name": item.food_item.name
                     },
                     "serving": {
-                        "size": item.serving_size,
-                        "unit": item.serving_unit
+                        "size": float(item.serving_size or 0),
+                        "unit": item.serving_unit or "g"
                     },
                     "notes": item.notes,
                     "calculatedNutrition": self._calculate_nutrition(
                         food_item=item.food_item,
-                        serving_size=float(item.serving_size),
-                        serving_unit=item.serving_unit
+                        serving_size=float(item.serving_size or 0),
+                        serving_unit=item.serving_unit or "g"
                     )
                 } for item in template.items
             ]

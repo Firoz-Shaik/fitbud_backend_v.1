@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, EmailStr
 from .core import CamelCaseModel
+
 class Token(CamelCaseModel):
     access_token: str
     token_type: str

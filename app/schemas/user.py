@@ -1,9 +1,11 @@
 # fitbud_v1/app/schemas/user.py
 
-from pydantic import BaseModel, EmailStr, constr, computed_field
+from typing import Optional
+from pydantic import ConfigDict, EmailStr, constr, computed_field
 import uuid
 from datetime import datetime
 from .core import CamelCaseModel
+
 class UserBase(CamelCaseModel):
     email: EmailStr
     full_name: constr(min_length=1)
@@ -19,9 +21,10 @@ class UserUpdate(CamelCaseModel):
 
 class User(UserBase):
     id: uuid.UUID
+    full_name: Optional[str]
     user_role: str
     profile_photo_url: str | None = None
-    created_at: datetime
+    created_at: Optional[datetime]
     @computed_field
     @property
     def client_profile_id(self) -> uuid.UUID | None:
@@ -29,9 +32,7 @@ class User(UserBase):
             return self.client_profile.id
         return None
 
-    class Config:
-        # This allows Pydantic to create the model from an ORM object
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 class UserPasswordUpdate(CamelCaseModel):
     current_password: str
     new_password: constr(min_length=8)

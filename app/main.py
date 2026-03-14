@@ -1,10 +1,17 @@
 # app/main.py
 # The main entry point for the FastAPI application.
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware # Import the middleware
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.api.v1.api import api_router
 from app.core.config import settings
+from app.domain.errors import (
+    OwnershipViolation,
+    ResourceNotFound,
+    InvalidClientState,
+    DomainError,
+)
 
 app = FastAPI(
     title="Fitbud API",
@@ -33,6 +40,27 @@ app.add_middleware(
 
 # Include the main API router with a prefix
 app.include_router(api_router, prefix="/api/v1")
+
+
+@app.exception_handler(OwnershipViolation)
+def ownership_violation_handler(request: Request, exc: OwnershipViolation):
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@app.exception_handler(ResourceNotFound)
+def resource_not_found_handler(request: Request, exc: ResourceNotFound):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(InvalidClientState)
+def invalid_client_state_handler(request: Request, exc: InvalidClientState):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(DomainError)
+def domain_error_handler(request: Request, exc: DomainError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
 
 @app.get("/health", tags=["Health Check"])
 def health_check():

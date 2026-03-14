@@ -1,0 +1,23 @@
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Pytest
+.pytest_cache/
+
+# Virtual environments
+venv/
+.env/
+
+# Docker
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Git
+.git

@@ -4,6 +4,7 @@ from typing import Any, Optional
 from datetime import datetime
 from .assigned_plan import AssignedWorkoutPlan, AssignedDietPlan
 from .core import CamelCaseModel
+
 class TraineeToday(CamelCaseModel):
     assigned_workout: Any  # This will hold the workout JSON or be null
     is_rest_day: bool

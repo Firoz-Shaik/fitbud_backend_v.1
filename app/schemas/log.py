@@ -4,7 +4,7 @@
 import uuid
 from datetime import datetime
 from typing import Any, List, Optional
-from pydantic import BaseModel, constr
+from pydantic import BaseModel, ConfigDict, constr
 from .core import CamelCaseModel
 
 # --- Workout Log Schemas ---
@@ -22,8 +22,7 @@ class WorkoutLog(CamelCaseModel):
     performance_data: Any
     logged_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- Diet Log Schemas ---
 
@@ -40,5 +39,4 @@ class DietLog(CamelCaseModel):
     status: str
     logged_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

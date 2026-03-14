@@ -1,0 +1,1 @@
+#marks app.domain.authorization as a package

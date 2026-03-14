@@ -1,0 +1,1 @@
+#marks app.domain as a package

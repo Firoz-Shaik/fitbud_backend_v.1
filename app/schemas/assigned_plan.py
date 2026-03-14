@@ -3,10 +3,9 @@
 
 import uuid
 from typing import Any, Optional
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, ConfigDict, computed_field
 from datetime import datetime
 from .core import CamelCaseModel
-# No longer imports from .template, fixing the ImportError
 
 # --- Plan Assignment Schemas ---
 class PlanAssignmentBase(CamelCaseModel):
@@ -33,9 +32,8 @@ class AssignedPlan(CamelCaseModel):
         if isinstance(self.plan_details, dict) and "name" in self.plan_details:
             return self.plan_details["name"]
         return "Custom Plan"
-    
-    class Config:
-        from_attributes = True
+
+    model_config = ConfigDict(from_attributes=True)
 
 class AssignedWorkoutPlan(AssignedPlan):
     pass

@@ -19,7 +19,7 @@ router = APIRouter()
 def read_clients(
     db: DBSession,
     current_trainer: CurrentTrainer,
-    status: Optional[str] = Query(None, enum=["invited", "active", "inactive"]),
+    status: Optional[str] = Query(None, enum=["invited", "active", "paused","archived"]),
     skip: int = 0,
     limit: int = 100,
 ):

@@ -4,9 +4,10 @@
 import uuid
 from datetime import datetime
 from typing import Any, Optional
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, ConfigDict, HttpUrl
 from decimal import Decimal
 from .core import CamelCaseModel
+
 class CheckinCreate(CamelCaseModel):
     weight_kg: Optional[Decimal] = None
     # measurements can be any valid JSON, e.g., {"waist_cm": 80, "hip_cm": 95}
@@ -26,5 +27,4 @@ class Checkin(CamelCaseModel):
     notes: Optional[str] = None
     checked_in_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

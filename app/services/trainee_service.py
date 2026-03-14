@@ -1,19 +1,23 @@
 # app/services/trainee_service.py
 import uuid
 from datetime import date, timedelta
+from fastapi import HTTPException, status
+from app.domain.authorization.client_access import get_client_for_viewer
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import union_all, select, literal_column
 from app.models.plan import AssignedWorkoutPlan, AssignedDietPlan
 from app.models.log import WorkoutLog, DietLog
 from app.schemas.trainee import TraineePlans
 from app.models.client import Client
-from app.models.user import User
+from app.core.auth_context import ClientContext
+from app.domain.client_guards import assert_client_allows_action
 
 class TraineeService:
-    def get_trainee_dashboard(self, db: Session, *, client_id: uuid.UUID) -> dict:
+    def get_trainee_dashboard(self, db: Session, *, client_id: uuid.UUID, current_user) -> dict:
         today = date.today()
-        
-        # 1. Get today's workout
+        client = get_client_for_viewer(db, client_id=client_id, current_user=current_user)
+        assert_client_allows_action(client, "view_client_dashboard")
+        # 2. Get today's workout
         assigned_workout = db.query(AssignedWorkoutPlan).filter(
             AssignedWorkoutPlan.client_id == client_id,
             AssignedWorkoutPlan.assigned_at <= today
@@ -92,10 +96,13 @@ class TraineeService:
         }
     
         
-    def get_trainee_plans(self, db: Session, *, client_id: uuid.UUID) -> TraineePlans:
+    def get_trainee_plans(self, db: Session, *, client_id: uuid.UUID, current_user) -> TraineePlans:
         """
         Retrieves the most recently assigned workout and diet plans for a trainee.
         """
+        client = get_client_for_viewer(db, client_id=client_id, current_user=current_user)
+        assert_client_allows_action(client, "view_assigned_plans")
+
         latest_workout_plan = db.query(AssignedWorkoutPlan).filter(
             AssignedWorkoutPlan.client_id == client_id,
             AssignedWorkoutPlan.deleted_at.is_(None)
@@ -110,15 +117,16 @@ class TraineeService:
             workout_plan=latest_workout_plan,
             diet_plan=latest_diet_plan
         )
-    def mark_payment_as_pending(self, db: Session, *, current_user: User) -> Client:
+        
+    def mark_payment_as_pending(self, db: Session, *, current_client: ClientContext) -> Client:
         """
-        Finds the client profile for the current user and sets their
+        Finds the client profile for the current client and sets their
         payment status to 'pending'.
         """
-        if not current_user.client_profile:
+        if not current_client.client_profile:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client profile not found for this user.")
-        
-        client = current_user.client_profile
+
+        client = current_client.client_profile
         client.payment_status = "pending"
         db.add(client)
         db.commit()

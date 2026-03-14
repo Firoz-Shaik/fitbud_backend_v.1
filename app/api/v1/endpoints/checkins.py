@@ -7,8 +7,6 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import CurrentUser, CurrentClient, DBSession
-# Re-using the authorization helper from the logging endpoints
-from .logs import authorize_log_access 
 from app.schemas.checkin import Checkin, CheckinCreate
 from app.services.checkin_service import checkin_service
 
@@ -24,13 +22,9 @@ def submit_checkin(
     """
     Submit a weekly check-in. (Client only)
     """
-    if not current_client.client_profile:
-         raise HTTPException(
-             status_code=status.HTTP_400_BAD_REQUEST, 
-             detail="Client profile not found for this user."
-        )
+    
     checkin = checkin_service.create_checkin(
-        db=db, obj_in=checkin_in, client_id=current_client.client_profile.id
+        db=db, obj_in=checkin_in, current_client=current_client
     )
     return checkin
 
@@ -50,11 +44,11 @@ def list_checkins(
     """
     # This helper function correctly checks if the current user is the client
     # or the client's assigned trainer.
-    authorize_log_access(db, current_user, client_id)
     
     checkins = checkin_service.get_checkins_by_client(
         db, 
         client_id=client_id, 
+        current_user=current_user,
         start_date=start_date, 
         end_date=end_date, 
         skip=skip, 

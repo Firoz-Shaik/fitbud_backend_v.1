@@ -1,0 +1,54 @@
+# docker-compose.yml
+# UPDATED: Now runs Alembic migrations on startup and includes test database.
+
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fitbud_git_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      postgres_test:
+        condition: service_healthy
+    # COMMAND UPDATED: First, run migrations to ensure DB is up to date.
+    # Then, start the Uvicorn server with hot-reloading for development.
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    environment:
+      - TEST_DATABASE_URL=postgresql://test_user:test_password@postgres_test:5432/test_db
+  
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+  
+  postgres_test:
+    image: postgres:15
+    container_name: fitbud_postgres_test
+    environment:
+      POSTGRES_DB: test_db
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d test_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
+volumes:
+  redis_data:
+  postgres_test_data:
