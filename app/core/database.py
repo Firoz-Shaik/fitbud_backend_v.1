@@ -8,14 +8,23 @@ from .config import settings
 
 # Create the SQLAlchemy engine
 # The pool_pre_ping argument ensures that the connection is alive before being used.
+# engine = create_engine(
+#     settings.DATABASE_URL, 
+#     pool_pre_ping=True,
+#     pool_size=5,  # Adjust based on your expected load
+#     max_overflow=10,  # Allow temporary connections above the pool_size
+#     use_insertmanyvalues=False,
+# )
+
+from sqlalchemy.pool import NullPool
+
+
 engine = create_engine(
-    settings.DATABASE_URL, 
+    settings.DATABASE_URL,
+    poolclass=NullPool,
     pool_pre_ping=True,
-    pool_size=5,  # Adjust based on your expected load
-    max_overflow=10,  # Allow temporary connections above the pool_size
     use_insertmanyvalues=False,
 )
-
 
 # Create a session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

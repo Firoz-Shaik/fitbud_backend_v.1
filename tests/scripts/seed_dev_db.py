@@ -18,6 +18,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
+from app.core.security import get_password_hash
 from app.models.user import User
 from app.models.client import Client
 from app.models.template import (
@@ -41,8 +42,8 @@ def fake_name():
 
 def fake_email():
     f = fake_us if random.random() < 0.75 else fake_ind
-    return f.unique.email()
-
+    name = f.user_name()
+    return f"{name}_{uuid.uuid4().hex[:5]}@fitbud.com"
 
 # ---------- COPY HELPER ----------
 def copy_rows(db: Session, table_name: str, columns: list[str], rows: list[tuple]):
@@ -105,7 +106,7 @@ def seed(scale: int):
         for i in range(scale):
             trainer = User(
                 email=fake_email(),
-                hashed_password="trainer_password",
+                hashed_password=get_password_hash("trainer_password"),
                 full_name=fake_name(),
                 user_role="trainer",
             )
@@ -219,7 +220,7 @@ def seed(scale: int):
                 if not invited:
                     client_user = User(
                         email=invited_email,
-                        hashed_password="client_password",
+                        hashed_password=get_password_hash("client_password"),
                         full_name=invited_name,
                         user_role="client",
                     )
