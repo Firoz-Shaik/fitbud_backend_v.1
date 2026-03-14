@@ -28,4 +28,4 @@ COPY . /app
 
 # Command to run the application
 # The docker-compose.yml will override this with a command that supports hot-reloading.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
