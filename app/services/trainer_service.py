@@ -12,7 +12,7 @@ class TrainerService:
 
         current_active_clients = (
             db.query(Client)
-            .filter(Client.trainer_user_id == trainer_id, Client.status == 'active', Client.deleted_at.is_(None))
+            .filter(Client.trainer_user_id == trainer_id, Client.client_status == 'active', Client.deleted_at.is_(None))
             .count()
         )
         

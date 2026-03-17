@@ -28,9 +28,9 @@ class TraineeService:
         is_rest_day = True
         if assigned_workout:
             day_of_week = today.strftime("%A") # e.g., "Monday"
-            for day in assigned_workout.plan_details.get("days", []):
-                if day_of_week in day.get("day_name", ""):
-                    todays_workout_details = day
+            for item in assigned_workout.plan_details.get("items", []):
+                if day_of_week in item.get("day_name", ""):
+                    todays_workout_details = item
                     is_rest_day = False
                     break
         

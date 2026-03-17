@@ -2,7 +2,7 @@
 # SQLAlchemy ORM models for plan templates, updated for V2 structure.
 
 import uuid
-from sqlalchemy import Column, String, DateTime, func, ForeignKey, Integer, BigInteger, Text, Boolean, Numeric, UniqueConstraint
+from sqlalchemy import Column, String, DateTime, func, ForeignKey, Integer, BigInteger, Text, Boolean, Numeric, UniqueConstraint, Index
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -11,10 +11,6 @@ from app.core.database import Base
 
 class ExerciseLibrary(Base):
     __tablename__ = "exercise_library"
-
-    __table_args__ = (
-        UniqueConstraint("name", "owner_trainer_id", name="uq_exercise_trainer"),
-    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
@@ -25,12 +21,24 @@ class ExerciseLibrary(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
+    __table_args__ = (
+    Index(
+        "uq_verified_exercise",
+        "name",
+        unique=True,
+        postgresql_where=(is_verified == True)
+    ),
+    Index(
+        "uq_trainer_exercise",
+        "name",
+        "owner_trainer_id",
+        unique=True,
+        postgresql_where=(is_verified == False)
+    ),
+    )
+
 class FoodItemLibrary(Base):
     __tablename__ = "food_item_library"
-
-    __table_args__ = (
-        UniqueConstraint("name", "owner_trainer_id", name="uq_food_trainer"),
-    )
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
@@ -45,6 +53,22 @@ class FoodItemLibrary(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+    Index(
+        "uq_verified_food",
+        "name",
+        unique=True,
+        postgresql_where=(is_verified == True)
+    ),
+    Index(
+        "uq_trainer_food",
+        "name",
+        "owner_trainer_id",
+        unique=True,
+        postgresql_where=(is_verified == False)
+    ),
+    )
 
 # --- NEW V2 LINKING MODELS ---
 
@@ -104,3 +128,4 @@ class DietPlanTemplate(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     items = relationship("DietTemplateItem", cascade="all, delete-orphan")
+
