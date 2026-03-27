@@ -10,9 +10,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import NullPool
 
-# Disable Redis-backed auth caching during tests.
-# Otherwise a stale cached user id can be returned for trainer@test.com/client@test.com
-# and cause FK violations against the test database's users table.
+# Disable Redis-backed auth caching during tests (no REDIS_URL required).
 os.environ.setdefault("DISABLE_AUTH_CACHE", "1")
 
 from app.main import app

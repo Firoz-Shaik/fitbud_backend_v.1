@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
+    # Hosted Redis (e.g. Redis Cloud). Full URL with password, e.g.
+    # redis://default:YOUR_PASSWORD@HOST:PORT/0
+    REDIS_URL: str | None = None
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

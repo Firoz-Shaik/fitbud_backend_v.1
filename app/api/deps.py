@@ -48,22 +48,21 @@ def get_current_user(
         token_data = TokenData(email=email)
     except (JWTError, ValidationError):
         raise credentials_exception
-        
+
     cached_user = get_cached_user(token_data.email)
     if cached_user:
         user = User(
             id=uuid.UUID(cached_user["id"]),
             email=cached_user["email"],
-            user_role=cached_user["role"]
+            user_role=cached_user["role"],
         )
     else:
         user = user_service.get_user_by_email(db, email=token_data.email)
         if user:
-            set_cached_user(token_data.email, {
-                "id": str(user.id),
-                "email": user.email,
-                "role": user.user_role
-            })
+            set_cached_user(
+                token_data.email,
+                {"id": str(user.id), "email": user.email, "role": user.user_role},
+            )
     if user is None or user.deleted_at is not None:
         raise credentials_exception
         
